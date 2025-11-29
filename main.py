@@ -2,7 +2,9 @@ from typing import List
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from api.endpoints import estnltk_endpoint
-from contextlib import asynccontextmanager
+from api.endpoints import tts_endpoint
+from contextlib import asynccontextmanager, AsyncExitStack
+import httpx
 
 # --- Configuration ---
 origins: List[str] = [
@@ -10,18 +12,18 @@ origins: List[str] = [
     # "http://localhost:8080",
 ]
 
-# --- Lifecycle Management (For future-proofing) ---
-# Use an async context manager to handle startup/shutdown events.
+# --- Lifecycle Management ---
+# Use AsyncExitStack to manage multiple context managers gracefully
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Optional: Perform heavy initialization like loading large NLP models here.
-    print("Application Startup.")
-    yield
-    # Optional: Perform cleanup/closing connections here.
-    print("Application Shutdown: Resources released.")
+    async with AsyncExitStack() as stack:
+        # 1. Run the TTS service lifespan manager first
+        await stack.enter_async_context(tts_endpoint.tts_lifespan_manager(app))
+        print("Application Startup.")
+        yield
+    print("Application Shutdown: All resources released.")
 
 # --- FastAPI Initialization ---
-# Initialize the application instance with metadata and the lifespan manager.
 app = FastAPI(
     title="Estonian Morphology API",
     description="API for converting Estonian sentences based on the 'Ma tahan' ('I want') structure using EstNLTK.",
@@ -39,9 +41,8 @@ app.add_middleware(
 )
 
 # --- Include Routers ---
-# This is how you integrate endpoints from different files/modules.
-# All routes in morphology.py will be prefixed by /api/v1/morphology
 app.include_router(estnltk_endpoint.router, prefix="/api/v1/estnltk", tags=["estnltk"])
+app.include_router(tts_endpoint.router, prefix="/api/v1/tts", tags=["tts"])
 
 
 # --- Root Endpoint (Health Check / Documentation Index) ---
