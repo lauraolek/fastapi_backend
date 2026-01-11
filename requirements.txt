@@ -4,3 +4,12 @@ pydantic
 estnltk
 python-multipart
 httpx
+pydantic[email]
+sqlalchemy
+asyncpg
+psycopg2-binary
+pyjwt
+bcrypt
+sqlmodel
+aiofiles
+aiobotocore

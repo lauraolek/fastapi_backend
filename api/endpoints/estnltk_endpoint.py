@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
-from models.estnltk_schemas import ImageWord, SentenceRequest, SentenceResponse
-# Import the service function from the services layer
+from models.estnltk_schemas import SentenceRequest, SentenceResponse
+from models.schemas import ImageWord
 from services.estnltk_service import teisenda_ma_tahan_lauseosa
 from typing import List
 
