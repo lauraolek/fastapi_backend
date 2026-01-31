@@ -1,21 +1,26 @@
 import logging
+import os
 from uuid import UUID as PyUUID
 from typing import Optional
-from fastapi import HTTPException, status
+from fastapi import BackgroundTasks, HTTPException, status
 
 from db.profile_repository import ProfileRepository
 from db.user_repository import UserRepository
 from models.schemas import UserCreate, UserLogin, UserOut, ProfileCreate
 from auth.password_handler import hash_password, verify_password
+from services.email_service import EmailService
 
 logger = logging.getLogger(__name__)
 
+DEFAULT_PIN = os.environ.get("DEFAULT_PIN", "9999")
+
 class UserService:
-    def __init__(self, repository: UserRepository, prof_repo: ProfileRepository, profile_service=None):
+    def __init__(self, repository: UserRepository, prof_repo: ProfileRepository, email_service: EmailService, profile_service=None):
         self.repo = repository
         self.prof_repo = prof_repo
         # profile_service is injected to handle complex seeding
         self.profile_service = profile_service
+        self.email_service = email_service
 
     async def register_user(self, user_data: UserCreate) -> UserOut:
         """Registers a new user and seeds their default profile."""
@@ -95,3 +100,36 @@ class UserService:
                 # We don't commit/rollback here; the caller (register/auth) manages the transaction
                 logger.error(f"Error during initial profile seeding for user {user_id}: {e}")
                 raise
+
+    async def get_user_pin(self, user_id: PyUUID) -> Optional[str]:
+        """Retrieves the PIN for a specific user."""
+        user = await self.repo.get_by_id(user_id)
+        if not user:
+            return None
+        return user.pin
+
+    async def update_user_pin(self, user_id: PyUUID, new_pin: str) -> bool:
+        """Updates the user's PIN."""
+        try:
+            # You might want to add validation here (e.g., 4 digits)
+            await self.repo.update_user(user_id, {"pin": new_pin})
+            await self.repo.session.commit()
+            return True
+        except Exception as e:
+            await self.repo.session.rollback()
+            logger.error(f"Failed to update PIN for user {user_id}: {e}")
+            return False
+
+    async def initiate_pin_reset(self, user_id: PyUUID, background_tasks: BackgroundTasks) -> bool:
+        """Logic to send a reset PIN email."""
+        user = await self.repo.get_by_id(user_id)
+        if not user:
+            return False
+        
+        await self.repo.update_user(user_id, {"pin": DEFAULT_PIN})
+        await self.repo.session.commit()
+            
+        logger.info(f"Initiating PIN reset for {user.email}")
+        background_tasks.add_task(self.email_service.send_pin_reset_email, user.email, "1593")
+        
+        return True

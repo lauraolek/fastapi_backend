@@ -82,6 +82,9 @@ class UserOut(UserBase):
     id: PyUUID
     is_active: bool = True
 
+class PinUpdatePayload(CamelModel):
+    pin: str = Field(..., description="The new 4 digit security PIN")
+
 class Token(CamelModel):
     token: str
     token_type: str = "bearer"

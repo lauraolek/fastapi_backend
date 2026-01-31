@@ -21,6 +21,7 @@ class UserModel(Base):
     email: Mapped[str] = mapped_column(String, unique=True, nullable=False)
     hashed_password = Column(String, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=true(), nullable=False)
+    pin: Mapped[str] = mapped_column(String, nullable=True)
     
     profiles = relationship("ProfileModel", back_populates="user", cascade="all, delete-orphan")
 

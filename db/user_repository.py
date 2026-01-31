@@ -1,5 +1,6 @@
-from typing import Optional
-from sqlalchemy import select
+from typing import Any, Dict, Optional
+from uuid import UUID
+from sqlalchemy import select, update
 
 from db.base_repository import BaseRepository
 from db.models import UserModel
@@ -20,3 +21,21 @@ class UserRepository(BaseRepository[UserModel]):
         stmt = select(UserModel).where(UserModel.email == email)
         result = await self.session.execute(stmt)
         return result.scalars().first()
+    
+    async def get_by_id(self, user_id: UUID) -> Optional[UserModel]:
+        """Retrieves a user by their primary key UUID."""
+        stmt = select(UserModel).where(UserModel.id == user_id)
+        result = await self.session.execute(stmt)
+        return result.scalars().first()
+    
+    async def update_user(self, user_id: UUID, data: Dict[str, Any]) -> None:
+        """
+        Updates specific fields for a user.
+        Usage: await repo.update_user(user_id, {"pin": "1234"})
+        """
+        stmt = (
+            update(UserModel)
+            .where(UserModel.id == user_id)
+            .values(**data)
+        )
+        await self.session.execute(stmt)

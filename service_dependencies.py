@@ -6,6 +6,7 @@ from db.database import get_db
 from db.image_word_repository import ImageWordRepository
 from db.profile_repository import ProfileRepository
 from db.user_repository import UserRepository
+from services.email_service import EmailService
 from services.image_storage_service import ImageStorageService, get_storage_service
 from services.profile_service import ProfileService
 from services.seeding_service import SeedingService
@@ -39,11 +40,15 @@ def get_profile_service(
     from services.profile_service import ProfileService
     return ProfileService(repo, cat_repo, i_w_repo, seeding_service, storage)
 
+def get_email_service() -> EmailService:
+    return EmailService()
+
 def get_user_service(
     db: AsyncSession = Depends(get_db),
-    profile_service: ProfileService = Depends(get_profile_service)
+    profile_service: ProfileService = Depends(get_profile_service),
+    email_service: EmailService = Depends(get_email_service)
 ) -> UserService:
     user_repo = UserRepository(session=db)
     prof_repo = ProfileRepository(session=db)
     
-    return UserService(user_repo, prof_repo, profile_service)
+    return UserService(user_repo, prof_repo, email_service, profile_service)
