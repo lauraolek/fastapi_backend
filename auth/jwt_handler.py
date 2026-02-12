@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta, timezone
 import time
 import os
 from typing import Dict, Any, Optional
@@ -28,7 +29,8 @@ class JWTHandler:
         """
         payload = {
             "user_id": str(user_id),
-            "expires": time.time() + 86400  # 86400 seconds = 24 hours
+            "exp": datetime.now(timezone.utc) + timedelta(days=1),
+            "iat": datetime.now(timezone.utc)
         }
         
         token = jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
@@ -48,7 +50,7 @@ class JWTHandler:
             decoded_token: DecodedPayload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
             
             # 2. Check for expiration
-            if decoded_token.get("expires", 0) >= time.time():
+            if decoded_token.get("exp", 0) >= time.time():
                 # Ensure user_id is present and is a string for type consistency
                 if decoded_token.get("user_id") and isinstance(decoded_token["user_id"], str):
                     return decoded_token

@@ -89,6 +89,10 @@ class Token(CamelModel):
     token: str
     token_type: str = "bearer"
 
+class ResetPasswordUpdate(CamelModel):
+    token: str
+    new_password: str
+
 # IMPORTANT: Rebuild models to resolve type hints for FastAPI
 ImageWord.model_rebuild()
 Category.model_rebuild()

@@ -3,7 +3,7 @@ from typing import Dict
 from uuid import UUID as PyUUID
 from auth.dependencies import get_current_user_id
 from services.user_service import UserService
-from models.schemas import PinUpdatePayload, UserCreate, UserLogin, UserOut
+from models.schemas import PinUpdatePayload, ResetPasswordUpdate, UserBase, UserCreate, UserLogin, UserOut
 from auth.jwt_handler import JWTHandler
 from service_dependencies import get_user_service
 
@@ -76,3 +76,43 @@ async def reset_pin_request(
         raise HTTPException(status_code=500, detail="Failed to send reset email")
         
     return {"message": "Reset email sent"}
+
+@router.post("/forgot-password", status_code=status.HTTP_200_OK)
+async def forgot_password(
+    request: UserBase,
+    background_tasks: BackgroundTasks,
+    user_service: UserService = Depends(get_user_service) # Assumes dependency provider exists
+):
+    """
+    Handles the 'requestPasswordReset' call from the Flutter frontend.
+    """
+    success = await user_service.initiate_password_reset(
+        email=request.email,
+        background_tasks=background_tasks
+    )
+    
+    if not success:
+        # This block is rarely hit if you follow security best practices of 
+        # not confirming user existence, but provided for internal error handling.
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Could not process request."
+        )
+        
+    return {"message": "If the account exists, a reset link has been sent."}
+
+@router.post("/reset-password", status_code=status.HTTP_200_OK)
+async def reset_password(
+    data: ResetPasswordUpdate,
+    user_service: UserService = Depends(get_user_service)
+):
+    """
+    The endpoint the user hits after clicking the link in their email.
+    """
+    success = await user_service.complete_password_reset(data)
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired token."
+        )
+    return {"message": "Password updated successfully."}

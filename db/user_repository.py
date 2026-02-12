@@ -1,9 +1,9 @@
 from typing import Any, Dict, Optional
 from uuid import UUID
-from sqlalchemy import select, update
+from sqlalchemy import delete, select, update
 
 from db.base_repository import BaseRepository
-from db.models import UserModel
+from db.models import PasswordResetToken, UserModel
 from models.schemas import UserCreate
 
 
@@ -39,3 +39,23 @@ class UserRepository(BaseRepository[UserModel]):
             .values(**data)
         )
         await self.session.execute(stmt)
+
+    async def get_reset_token_record(self, token: str):
+        """Fetches the token record using the provided token string."""
+        query = select(PasswordResetToken).where(PasswordResetToken.token == token)
+        result = await self.session.execute(query)
+        return result.scalar_one_or_none()
+
+    async def update_user_password(self, user_id: UUID, hashed_password: str):
+        """Updates the password field on the user model."""
+        query = (
+            update(UserModel)
+            .where(UserModel.id == user_id)
+            .values(hashed_password=hashed_password)
+        )
+        await self.session.execute(query)
+
+    async def delete_reset_token(self, token: str):
+        """Removes the token record from the database."""
+        query = delete(PasswordResetToken).where(PasswordResetToken.token == token)
+        await self.session.execute(query)

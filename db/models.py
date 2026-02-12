@@ -1,6 +1,7 @@
+from datetime import datetime
 import uuid
 from uuid import UUID as PyUUID
-from sqlalchemy import Column, Integer, String, ForeignKey, Text, Boolean, true
+from sqlalchemy import Column, DateTime, Integer, String, ForeignKey, Text, Boolean, true
 from sqlalchemy.orm import relationship, DeclarativeBase, Mapped, mapped_column
 from sqlalchemy.dialects.postgresql import UUID 
 from typing import TYPE_CHECKING
@@ -14,6 +15,14 @@ class Base(DeclarativeBase):
 
 if TYPE_CHECKING:
     from models.schemas import UserOut
+
+class PasswordResetToken(Base):
+    __tablename__ = "password_reset_tokens"
+    
+    id: Mapped[int] = mapped_column(primary_key=True)
+    token: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
+    user_id: Mapped[PyUUID] = mapped_column(UUID(as_uuid=True), index=True, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 class UserModel(Base):
     __tablename__ = "users"
