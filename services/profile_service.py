@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from typing import List, Optional, cast
 from uuid import UUID as PyUUID
@@ -34,9 +35,18 @@ class ProfileService:
         self.seeding_service = seeding_service
 
     async def find_by_user_id(self, user_id: PyUUID) -> List[Profile]:
-        """Retrieves all profiles for a specific user."""
-        profiles = await self.repo.find_all_by_user(user_id)
-        return [Profile.model_validate(item) for item in profiles] 
+        """Retrieves all profiles for a specific user and 
+        recursively signs all nested image URLs."""
+        profiles_raw = await self.repo.find_all_by_user(user_id)
+        
+        pydantic_profiles = [Profile.model_validate(item) for item in profiles_raw]
+
+        # Process the detached Pydantic objects
+        await asyncio.gather(
+            *[self._process_profile_urls(item) for item in pydantic_profiles]
+        )
+
+        return pydantic_profiles
 
     async def find_by_id(self, id: int, user_id: PyUUID) -> Optional[Profile]:
         """Retrieves a single profile by ID if it belongs to the user."""
@@ -159,3 +169,22 @@ class ProfileService:
                 logger.warning(f"Skipping word {word_text}: Category {cat_name} not found or has no ID.")
 
         return list(created_categories.values())
+    
+    async def _process_profile_urls(self, profile: Profile) -> Profile:
+        """
+        Helper to traverse the nested structure: 
+        Profile -> Categories -> ImageWords
+        """
+        if not profile.categories:
+            return profile
+
+        for category in profile.categories:
+            if category.image_url:
+                category.image_url = await self.image_storage_service.get_url(category.image_url)
+
+            if category.items:
+                for word in category.items:
+                    if word.image_url:
+                        word.image_url = await self.image_storage_service.get_url(word.image_url)
+        
+        return profile

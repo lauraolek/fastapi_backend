@@ -52,7 +52,7 @@ class CategoryModel(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     profile_id = Column(Integer, ForeignKey("profiles.id", ondelete="CASCADE"), nullable=False)
     name = Column(String, nullable=False)
-    image_url = Column(Text, nullable=True)
+    image_url: Mapped[str] = mapped_column(Text, nullable=True)
     
     profile = relationship("ProfileModel", back_populates="categories")
     items = relationship("ImageWordModel", back_populates="category", cascade="all, delete-orphan", order_by="ImageWordModel.id")

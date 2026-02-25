@@ -1,44 +1,62 @@
 import os
-import mimetypes
-from pathlib import Path
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
+
+from services.image_storage_service import ImageStorageService, get_storage_service
 
 UPLOAD_DIR = os.getenv("FILE_UPLOAD_DIR", "uploads")
 
 router = APIRouter(prefix="", tags=["images"])
 
-@router.get("/{filename}", response_class=FileResponse)
-async def serve_image(filename: str):
+@router.get("/{filename}")
+async def get_image_url(
+    filename: str,
+    expires_in: int = 3600,
+    storage: ImageStorageService = Depends(get_storage_service)
+):
     """
-    REST Controller for serving uploaded images.
-    Retrieves images from the local storage directory.
+    Smart resolver: 
+    1. Tries to get a Cloud/Remote URL from the storage service.
+    2. If remote storage fails or is disabled, checks local disk.
+    3. Returns a local '/serve/' path if found locally.
     """
+    # 1. Try Cloud Storage first
     try:
-        # Resolve the absolute path and ensure it's within the upload directory
-        file_path = Path(UPLOAD_DIR).resolve() / filename
+        url = await storage.get_url(filename, expires_in=expires_in)
+        if url and url.startswith("http"):
+            return {"url": url, "source": "cloud"}
+    except Exception:
+        # Fallback to local check if cloud fails or isn't configured
+        pass
+
+    # 2. Check local filesystem fallback
+    file_path = os.path.join(UPLOAD_DIR, filename)
+    if os.path.exists(file_path):
+        # Return the relative path to our serve endpoint
+        return {
+            "url": f"/api/images/serve/{filename}",
+            "source": "local"
+        }
+
+    raise HTTPException(status_code=404, detail="Image not found in any storage provider")
+
+@router.get("/serve/{filename}")
+async def serve_local_image(filename: str):
+    """
+    Serves images from the local filesystem. 
+    This is used as the fallback target for get_image_url.
+    """
+    print("serve")
+    file_path = os.path.join(UPLOAD_DIR, filename)
+    
+    # Security: Prevent directory traversal (e.g., filename="../../etc/passwd")
+    abs_upload_dir = os.path.abspath(UPLOAD_DIR)
+    abs_file_path = os.path.abspath(file_path)
+    
+    if not abs_file_path.startswith(abs_upload_dir):
+        raise HTTPException(status_code=403, detail="Invalid file path")
+
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="File not found")
         
-        # Security check: Prevent directory traversal (e.g., filename="../../etc/passwd")
-        if not str(file_path).startswith(str(Path(UPLOAD_DIR).resolve())):
-            raise HTTPException(status_code=400, detail="Invalid filename path")
-
-        if not file_path.exists() or not file_path.is_file():
-            raise HTTPException(status_code=404, detail="Image not found")
-
-        # Determine content type
-        # mimetypes.guess_type is more robust than manual suffix checking
-        content_type, _ = mimetypes.guess_type(str(file_path))
-        
-        # Fallback to octet-stream if type cannot be determined
-        if not content_type:
-            content_type = "application/octet-stream"
-
-        return FileResponse(
-            path=file_path,
-            media_type=content_type,
-            filename=filename # Set this if you want to force download behavior
-        )
-
-    except Exception as e:
-        # In a real app, log the error 'e'
-        raise HTTPException(status_code=500, detail="Internal server error")
+    return FileResponse(file_path)
