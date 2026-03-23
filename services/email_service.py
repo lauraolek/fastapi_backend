@@ -48,13 +48,13 @@ class EmailService:
         message.attach(MIMEText(html, "html"))
 
         # 3. Send the email
-        # We use a context manager to ensure the connection is closed
-        context = ssl.create_default_context()
+        # context = ssl.create_default_context()
         
         try:
             with smtplib.SMTP(self.server, self.port) as server:
-                server.starttls(context=context) # Secure the connection
-                server.login(self.username, self.password)
+                # server.starttls(context=context) # Secure the connection
+                # server.login(self.username, self.password)
+                server.set_debuglevel(1)
                 server.sendmail(SENDER_EMAIL, recipient_email, message.as_string())
             logger.info(f"Email sent successfully to {recipient_email}")
         except Exception as e:
@@ -73,7 +73,7 @@ class EmailService:
 
         # 2. Create the body (Plain text and HTML)
         # Using a link for the token is standard for password resets
-        reset_link = f"https://{APP_URL}/reset?token={reset_token}"
+        reset_link = f"https://{APP_URL}/#/reset?token={reset_token}"
         
         text = f"Hello,\n\nPlease use the following link to reset your password: {reset_link}\n\nIf you did not request this, please contact support."
         html = f"""
@@ -93,12 +93,13 @@ class EmailService:
         message.attach(MIMEText(html, "html"))
 
         # 3. Send the email
-        context = ssl.create_default_context()
+        # context = ssl.create_default_context()
         
         try:
             with smtplib.SMTP(self.server, self.port) as server:
-                server.starttls(context=context) 
-                server.login(self.username, self.password)
+                # server.starttls(context=context) 
+                # server.login(self.username, self.password)
+                server.set_debuglevel(1)
                 server.sendmail(SENDER_EMAIL, recipient_email, message.as_string())
             logger.info(f"Reset email sent successfully to {recipient_email}")
         except Exception as e:
