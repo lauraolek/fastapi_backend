@@ -10,13 +10,10 @@ from api.endpoints.tts_endpoint import router as tts_router, tts_lifespan_manage
 from api.endpoints.auth_endpoint import router as auth_router
 from contextlib import asynccontextmanager, AsyncExitStack
 from db.database import create_all_tables
+from config import settings
 
 # --- Configuration ---
-origins: List[str] = [
-    "https://aac.itcollege.ee",
-    "http://localhost:8080",
-    "http://localhost:61900",
-]
+origins: List[str] = [settings.app_url]
 
 # --- Lifecycle Management ---
 # Use AsyncExitStack to manage multiple context managers gracefully

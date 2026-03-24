@@ -3,7 +3,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     # This must match the environment variable name in docker-compose or .env
     database_url: str = "postgresql://user:pass@localhost:5432/db"
-    app_url: str = "aac.itcollege.ee"
+    app_url: str = "http://localhost:8000"
     log_level: str = "info"
     upload_dir: str = "uploads"
 
