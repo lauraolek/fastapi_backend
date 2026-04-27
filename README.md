@@ -22,6 +22,7 @@ Populate .env file:
     APP_URL=
     LOG_LEVEL=
     UPLOAD_DIR=uploads
+    IMAGE_BACKGROUND_COLOR=#f7f2fa
     JWT_SECRET=
 
     SMTP_SERVER=

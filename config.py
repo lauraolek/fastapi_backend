@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     log_level: str = "info"
     upload_dir: str = "uploads"
 
+    image_background_color: str = "#ffffff"
     jwt_secret: str = ""
 
     smtp_server: str = ""

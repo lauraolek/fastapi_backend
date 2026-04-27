@@ -59,16 +59,27 @@ class ImageStorageService(ABC):
         # (register_heif_opener allows Image.open to handle HEIC)
         img = Image.open(io.BytesIO(original_content))
 
+        # TRANSPARENCY HANDLING
+        if img.mode != "RGBA":
+            img = img.convert("RGBA")
+
+        # Create a background canvas 
+        # (Using pure white (255, 255, 255) to match the card background)
+        background = Image.new("RGBA", img.size, settings.image_background_color)
+        
+        # Composite the image over the white background
+        # Alpha_composite is cleaner than 'paste' for transparent images
+        img = Image.alpha_composite(background, img)
+        
+        # Drop the Alpha channel now that we have a solid background
+        img = img.convert("RGB")
+
         # Fix EXIF orientation
         try:
             from PIL import ImageOps
             img = ImageOps.exif_transpose(img)
         except Exception:
             pass # If no EXIF data, just continue
-        
-        # Convert to RGB (Required for JPEG if source is RGBA or HEIC)
-        if img.mode != "RGB":
-            img = img.convert("RGB")
 
         max_size = 1600 
         if max(img.size) > max_size:
